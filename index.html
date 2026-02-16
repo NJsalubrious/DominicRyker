@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RYKER | Structure Over Sentiment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Manrope:wght@200;400;600&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --concrete: #1a1a1a;
+            --steel: #4a4a4a;
+            --gold: #C5A059;
+            --void: #050505;
+        }
+
+        body {
+            background-color: var(--void);
+            color: #e5e5e5;
+            font-family: 'Manrope', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        h1,
+        h2,
+        h3,
+        .serif {
+            font-family: 'Cinzel', serif;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        .scroll-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        .section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background-color 0.5s ease;
+        }
+
+        /* The "Ryker Gaze" effect - text reveals only when looked at */
+        .reveal-text {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+            filter: blur(10px);
+        }
+
+        .reveal-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+        }
+
+        .vertical-line {
+            position: fixed;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(197, 160, 89, 0.2);
+            /* Gold trace */
+            z-index: 5;
+            transform: scaleY(0);
+            transform-origin: top;
+            transition: transform 1.5s ease-in-out;
+        }
+
+        .loaded .vertical-line {
+            transform: scaleY(1);
+        }
+
+        .quote-mark {
+            font-size: 8rem;
+            color: var(--gold);
+            opacity: 0.2;
+            line-height: 0;
+            font-family: 'Cinzel', serif;
+        }
+
+        .btn-gold {
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 1rem 3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            background: transparent;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .btn-gold:hover {
+            background: var(--gold);
+            color: #000;
+        }
+
+        /* Glitch override for Daughter sections */
+        .comparison-card {
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid #333;
+            backdrop-filter: blur(5px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .comparison-card:hover {
+            border-color: var(--gold);
+            transform: translateY(-5px);
+        }
+
+        .card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .blueprint-grid {
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        /* ── PIXELSTORTION BRANDING ── */
+        .ps-brand {
+            position: fixed;
+            top: 1rem;
+            left: 1.5rem;
+            z-index: 50;
+            font-family: 'Manrope', sans-serif;
+            font-size: 0.5rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: #3f3f46;
+            text-decoration: none;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        .ps-brand:hover {
+            color: #C5A059;
+            text-shadow: 0 0 8px rgba(197, 160, 89, 0.4);
+        }
+
+        .ps-brand::after {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 1px;
+            background: #C5A059;
+            opacity: 0;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+
+        .ps-brand:hover::after {
+            opacity: 0.5;
+            transform: scaleX(1);
+        }
+    </style>
+</head>
+
+<body class="blueprint-grid">
+
+    <!-- PIXELSTORTION BRANDING -->
+    <a href="https://pixelstortion.com" target="_blank" rel="noopener" class="ps-brand">PIXELSTORTION</a>
+
+    <!-- 3D Background: The Concrete Void -->
+    <div id="canvas-container"></div>
+
+    <!-- The Spine -->
+    <div class="vertical-line"></div>
+
+    <main class="scroll-content">
+
+        <!-- INTRO -->
+        <section class="section items-center text-center">
+            <div class="reveal-text delay-100">
+                <p class="text-xs tracking-[0.5em] text-gray-500 uppercase mb-4">The Public Record is Wrong</p>
+                <h1 class="text-6xl md:text-9xl font-black text-white mb-2 tracking-tighter">RYKER</h1>
+                <p class="text-xl md:text-2xl text-gold text-[#C5A059] italic serif mt-4">"Structure is not a
+                    suggestion."</p>
+            </div>
+        </section>
+
+        <!-- THE PHILOSOPHY -->
+        <section class="section max-w-4xl mx-auto">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="reveal-text">
+                    <img src="https://raw.githubusercontent.com/NJsalubrious/pixelstortion-assets/2f93e4cdc06a9628a8048164339e667da1d2048b/Dominic_misc/Dominics_portrait_BW_01.jpg"
+                        class="w-full grayscale border border-[#333] shadow-2xl" alt="Dominic Ryker">
+                    <p class="text-xs text-right mt-2 text-gray-600 uppercase tracking-widest">Fig 1. The Architect</p>
+                </div>
+                <div class="reveal-text space-y-6">
+                    <h2 class="text-4xl text-white mb-6">Negative Space</h2>
+                    <p class="text-gray-400 leading-relaxed font-light">
+                        They call it a "criminal empire." I call it urban planning with initiative.
+                        While the city sleeps, waiting for permission slips and council meetings, I pour the concrete.
+                        While they debate the morality of the foundation, I have already topped out the spire.
+                    </p>
+                    <p class="text-gray-400 leading-relaxed font-light">
+                        Dr. Cole’s "Psych Report" called me <em>instrumental</em>. He meant it as a diagnosis.
+                        I accepted it as a compliment. Instruments are useful. Instruments build.
+                        Empathy is just friction in the machinery of progress.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- THE REBUTTAL (Ethel & Isla) -->
+        <section class="section items-center">
+            <div class="reveal-text text-center mb-16">
+                <h2 class="text-4xl text-white">The Noise Below</h2>
+                <p class="text-gray-500 mt-4 tracking-widest uppercase text-xs">Addressing the "Resistance"</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 max-w-6xl w-full px-4">
+
+                <!-- REBUTTAL: ETHEL -->
+                <a href="https://ethelryker.com" target="_blank" rel="noopener" class="card-link">
+                    <div class="comparison-card p-8 reveal-text">
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl text-white">Subject: ETHEL</h3>
+                            <span
+                                class="text-green-500 text-xs border border-green-900 bg-green-900/10 px-2 py-1 font-mono">STATUS:
+                                STAGNANT</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-6 leading-relaxed">
+                            My daughter builds archives. Logs. Databases. She collects the past like it's currency.
+                            She thinks uncovering the "truth" of my methods deconstructs them.
+                            <br><br>
+                            But Ethel forgets: You can stare at the blueprints of a prison all day.
+                            It does not unlock the door. You built a website, Ethel. I built the skyline you're looking
+                            at
+                            while you code.
+                        </p>
+                        <div class="border-t border-gray-800 pt-4 mt-4">
+                            <p class="text-xs text-gray-600 font-mono">"I don't wear grief like soft designs." — <span
+                                    class="text-gray-500">You wear it like a shackle.</span></p>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- REBUTTAL: ISLA -->
+                <a href="https://islaband.com" target="_blank" rel="noopener" class="card-link">
+                    <div class="comparison-card p-8 reveal-text">
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="text-2xl text-white">Subject: ISLA</h3>
+                            <span
+                                class="text-red-500 text-xs border border-red-900 bg-red-900/10 px-2 py-1 font-mono">STATUS:
+                                VOLATILE</span>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-6 leading-relaxed">
+                            My stepdaughter builds chaos. Fluid simulations. Glitch art. Screaming.
+                            She calls it "reclaiming." She believes noise is power.
+                            <br><br>
+                            Isla, you are merely the entropy I hold back. You are the weather; I am the shelter.
+                            Without walls to scream against, your voice has no echo. You needed a villain to make you
+                            interesting. You're welcome.
+                        </p>
+                        <div class="border-t border-gray-800 pt-4 mt-4">
+                            <p class="text-xs text-gray-600 font-mono">"I'll turn their rooms into guitars." — <span
+                                    class="text-gray-500">I own the venue, Isla.</span></p>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+        </section>
+
+        <!-- THE ESCAPE / SAME BREATH -->
+        <section class="section max-w-5xl mx-auto">
+            <div class="reveal-text text-center mb-12">
+                <span class="quote-mark">“</span>
+                <h2 class="text-5xl md:text-7xl text-white mb-6 leading-tight">The Same Breath</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="reveal-text">
+                    <p class="text-lg text-[#C5A059] mb-4 font-bold uppercase tracking-widest">Italy, 2019.</p>
+                    <p class="text-gray-300 leading-relaxed mb-6 font-light">
+                        They tell the story of the convoy. How I saved a man from the wreckage, dragged him to the
+                        treeline.
+                        They call that heroism.
+                    </p>
+                    <p class="text-gray-300 leading-relaxed mb-6 font-light">
+                        Then they tell the story of how I ended him an hour later because he hesitated.
+                        They call that murder.
+                    </p>
+                    <p class="text-white text-xl serif italic">
+                        It was the same action.
+                    </p>
+                    <p class="text-gray-400 leading-relaxed mt-4 font-light">
+                        I removed a liability from a burning truck. Then I removed a liability from my organization.
+                        The moral difference exists only in your hesitation. I do not hesitate.
+                        That is why I am out here, and the system is back there, looking for a man who walked out the
+                        front door.
+                    </p>
+                </div>
+                <div class="reveal-text">
+                    <img src="https://raw.githubusercontent.com/NJsalubrious/pixelstortion-assets/4d41590d-bb64-4ce1-a9ca-89e9d0428071/Dominic_event_photo_01.jpg"
+                        class="w-full grayscale border border-[#333] opacity-80 hover:opacity-100 transition-opacity duration-700"
+                        alt="Dominic Ryker Gala">
+                    <p class="text-xs text-right mt-2 text-gray-600 uppercase tracking-widest">Fig 2. The Mask
+                        (Effective)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- THE CALL TO ACTION -->
+        <section class="section items-center text-center justify-center min-h-[50vh]">
+            <div class="reveal-text">
+                <h2 class="text-3xl text-gray-400 mb-8 font-light">You want to know where I am?</h2>
+                <p class="text-white text-xl mb-12 max-w-2xl mx-auto font-light">
+                    Look at the skyline. Look at the contracts. Look at the silence in the room when a decision needs to
+                    be made.
+                    I am not a fugitive. I am the infrastructure.
+                </p>
+                <button class="btn-gold" onclick="alert('You do not summon me. I summon you.')">
+                    Request Audience
+                </button>
+            </div>
+        </section>
+
+        <footer class="border-t border-[#1a1a1a] p-8 text-center">
+            <p class="text-[10px] text-gray-700 uppercase tracking-[0.3em]">Ryker Holdings © 2026. All rights reserved
+                by those who take them.</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // --- 1. THE "STRUCTURE" ENGINE (Three.js) ---
+        // Unlike Isla's fluid mess, this is rigid. Geometric. Infinite.
+
+        const initScene = () => {
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+
+            // Fog to hide the infinite distance
+            scene.fog = new THREE.FogExp2(0x050505, 0.02);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Geometry: The Monoliths
+            // We create hundreds of wireframe cubes that form a tunnel
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.3 });
+            const highlightMaterial = new THREE.LineBasicMaterial({ color: 0xC5A059, transparent: true, opacity: 0.1 });
+
+            const cubes = [];
+            const group = new THREE.Group();
+
+            for (let i = 0; i < 400; i++) {
+                const isHighlight = Math.random() > 0.95;
+                const cube = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(geometry),
+                    isHighlight ? highlightMaterial : material
+                );
+
+                // Position randomly in a tunnel shape
+                const r = 10 + Math.random() * 20;
+                const theta = Math.random() * Math.PI * 2;
+
+                cube.position.x = r * Math.cos(theta);
+                cube.position.y = r * Math.sin(theta);
+                cube.position.z = (Math.random() - 0.5) * 200;
+
+                // Random scale for architectural variety
+                const scale = Math.random() * 4 + 0.5;
+                cube.scale.set(scale, scale * (Math.random() * 5 + 1), scale);
+
+                cubes.push(cube);
+                group.add(cube);
+            }
+
+            scene.add(group);
+            camera.position.z = 5;
+
+            // Mouse Interaction (Subtle, Controlled)
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+
+            document.addEventListener('mousemove', (event) => {
+                mouseX = (event.clientX - window.innerWidth / 2) * 0.001;
+                mouseY = (event.clientY - window.innerHeight / 2) * 0.001;
+            });
+
+            // Scroll Interaction (Driving the camera forward)
+            let scrollY = 0;
+            window.addEventListener('scroll', () => {
+                scrollY = window.scrollY;
+            });
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                targetX = mouseX * 0.5;
+                targetY = mouseY * 0.5;
+
+                // Rotate the entire tunnel slowly
+                group.rotation.z += 0.0005;
+
+                // Move camera through tunnel based on scroll
+                camera.position.z = 5 - (scrollY * 0.02);
+
+                // Subtle parallax look
+                camera.rotation.x += 0.05 * (targetY - camera.rotation.x);
+                camera.rotation.y += 0.05 * (targetX - camera.rotation.y);
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            // Handle Resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        // --- 2. THE OBSERVER (Scroll Animations) ---
+        // Text reveals only when I permit it (Intersection Observer)
+
+        const initObserver = () => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.15 });
+
+            document.querySelectorAll('.reveal-text').forEach(el => observer.observe(el));
+
+            // Trigger the spine line
+            setTimeout(() => {
+                document.body.classList.add('loaded');
+            }, 500);
+        };
+
+        // Initialize
+        window.onload = () => {
+            initScene();
+            initObserver();
+        };
+
+    </script>
+</body>
+
+</html>
