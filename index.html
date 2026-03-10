@@ -493,13 +493,65 @@
             }, 500);
         };
 
+        // --- 3. BACKGROUND AUDIO (YouTube IFrame API) ---
+        // The atmosphere is not optional. It begins when you engage.
+
+        let bgPlayer = null;
+        let audioStarted = false;
+
+        function onYouTubeIframeAPIReady() {
+            bgPlayer = new YT.Player('yt-bg-player', {
+                videoId: '8rvIVBLZg2o',
+                playerVars: {
+                    autoplay: 0,
+                    loop: 1,
+                    playlist: '8rvIVBLZg2o',
+                    controls: 0,
+                    showinfo: 0,
+                    modestbranding: 1,
+                    rel: 0
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            event.target.setVolume(30);
+        }
+
+        function startBackgroundAudio() {
+            if (audioStarted || !bgPlayer || !bgPlayer.playVideo) return;
+            audioStarted = true;
+            bgPlayer.playVideo();
+
+            // Clean up listeners
+            ['click', 'scroll', 'keydown', 'touchstart'].forEach(evt => {
+                window.removeEventListener(evt, startBackgroundAudio);
+            });
+        }
+
         // Initialize
         window.onload = () => {
             initScene();
             initObserver();
+
+            // Attach interaction listeners for audio
+            ['click', 'scroll', 'keydown', 'touchstart'].forEach(evt => {
+                window.addEventListener(evt, startBackgroundAudio, { once: false });
+            });
         };
 
     </script>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <!-- Hidden YouTube Player -->
+    <div id="yt-bg-player" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;">
+    </div>
+
 </body>
 
 </html>
