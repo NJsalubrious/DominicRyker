@@ -498,6 +498,7 @@
 
         let bgPlayer = null;
         let audioStarted = false;
+        let playerReady = false;
 
         function onYouTubeIframeAPIReady() {
             bgPlayer = new YT.Player('yt-bg-player', {
@@ -509,37 +510,38 @@
                     controls: 0,
                     showinfo: 0,
                     modestbranding: 1,
-                    rel: 0
+                    playsinline: 1,
+                    rel: 0,
+                    origin: window.location.origin
                 },
                 events: {
-                    'onReady': onPlayerReady
+                    'onReady': function (event) {
+                        event.target.setVolume(30);
+                        playerReady = true;
+                    }
                 }
             });
         }
 
-        function onPlayerReady(event) {
-            event.target.setVolume(30);
-        }
-
         function startBackgroundAudio() {
-            if (audioStarted || !bgPlayer || !bgPlayer.playVideo) return;
-            audioStarted = true;
-            bgPlayer.playVideo();
-
-            // Clean up listeners
-            ['click', 'scroll', 'keydown', 'touchstart'].forEach(evt => {
-                window.removeEventListener(evt, startBackgroundAudio);
-            });
+            if (audioStarted) return;
+            if (!playerReady || !bgPlayer || !bgPlayer.playVideo) return;
+            try {
+                bgPlayer.playVideo();
+                audioStarted = true;
+                ['click', 'touchend', 'keydown'].forEach(function (evt) {
+                    document.removeEventListener(evt, startBackgroundAudio);
+                });
+            } catch (e) { /* retry on next tap */ }
         }
 
         // Initialize
         window.onload = () => {
             initScene();
             initObserver();
-
-            // Attach interaction listeners for audio
-            ['click', 'scroll', 'keydown', 'touchstart'].forEach(evt => {
-                window.addEventListener(evt, startBackgroundAudio, { once: false });
+            // click/touchend/keydown only — scroll is NOT a user gesture on mobile
+            ['click', 'touchend', 'keydown'].forEach(function (evt) {
+                document.addEventListener(evt, startBackgroundAudio);
             });
         };
 
@@ -548,9 +550,9 @@
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- Hidden YouTube Player -->
-    <div id="yt-bg-player" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;">
-    </div>
+    <!-- YouTube Player: 1x1px in viewport corner (mobile blocks off-screen iframes) -->
+    <div id="yt-bg-player"
+        style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;"></div>
 
 </body>
 
