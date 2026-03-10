@@ -493,12 +493,14 @@
             }, 500);
         };
 
-        // --- 3. BACKGROUND AUDIO (YouTube IFrame API) ---
-        // The atmosphere is not optional. It begins when you engage.
+        // --- 3. BACKGROUND AUDIO ---
+        // YouTube first (for view counts), Cloudflare MP3 failsafe (for blocked browsers)
 
+        const FALLBACK_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/DominicStructuralPsychopathy101.mp3';
         let bgPlayer = null;
         let audioStarted = false;
         let playerReady = false;
+        let fallbackAudio = null;
 
         function onYouTubeIframeAPIReady() {
             bgPlayer = new YT.Player('yt-bg-player', {
@@ -523,23 +525,48 @@
             });
         }
 
+        function playFallbackMP3() {
+            if (fallbackAudio) return;
+            fallbackAudio = new Audio(FALLBACK_MP3);
+            fallbackAudio.volume = 0.3;
+            fallbackAudio.loop = true;
+            fallbackAudio.play().catch(function () { });
+        }
+
         function startBackgroundAudio() {
             if (audioStarted) return;
-            if (!playerReady || !bgPlayer || !bgPlayer.playVideo) return;
-            try {
-                bgPlayer.playVideo();
-                audioStarted = true;
-                ['click', 'touchend', 'keydown'].forEach(function (evt) {
-                    document.removeEventListener(evt, startBackgroundAudio);
-                });
-            } catch (e) { /* retry on next tap */ }
+            audioStarted = true;
+
+            // Remove listeners immediately
+            ['click', 'touchend', 'keydown'].forEach(function (evt) {
+                document.removeEventListener(evt, startBackgroundAudio);
+            });
+
+            // Try YouTube first
+            if (playerReady && bgPlayer && bgPlayer.playVideo) {
+                try {
+                    bgPlayer.playVideo();
+                    // Check after 4s if YouTube actually started playing
+                    setTimeout(function () {
+                        try {
+                            var state = bgPlayer.getPlayerState();
+                            // 1 = playing, anything else = failed
+                            if (state !== 1) { playFallbackMP3(); }
+                        } catch (e) { playFallbackMP3(); }
+                    }, 4000);
+                } catch (e) {
+                    playFallbackMP3();
+                }
+            } else {
+                // YouTube never loaded — go straight to MP3
+                playFallbackMP3();
+            }
         }
 
         // Initialize
         window.onload = () => {
             initScene();
             initObserver();
-            // click/touchend/keydown only — scroll is NOT a user gesture on mobile
             ['click', 'touchend', 'keydown'].forEach(function (evt) {
                 document.addEventListener(evt, startBackgroundAudio);
             });
@@ -550,7 +577,7 @@
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
 
-    <!-- YouTube Player: 1x1px in viewport corner (mobile blocks off-screen iframes) -->
+    <!-- YouTube Player: 1x1px in viewport corner -->
     <div id="yt-bg-player"
         style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;"></div>
 
