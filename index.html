@@ -494,28 +494,23 @@
         };
 
         // --- 3. BACKGROUND AUDIO ---
-        // YouTube first (for view counts), Cloudflare MP3 failsafe (for blocked browsers)
-        // Strategy: Start BOTH on user gesture (MP3 silent), then after 4s keep whichever works.
-
-        const FALLBACK_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/DominicStructuralPsychopathy101.mp3';
-        let bgPlayer = null;
+        // Desktop = YouTube (for view counts), Mobile = direct MP3 (reliable)
+        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1);
+        const MOBILE_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/DominicStructuralPsychopathy101.mp3';
         let audioStarted = false;
+
+        // --- DESKTOP: YouTube ---
+        let bgPlayer = null;
         let playerReady = false;
-        let fallbackAudio = null;
 
         function onYouTubeIframeAPIReady() {
+            if (isMobile) return; // skip YouTube setup on mobile
             bgPlayer = new YT.Player('yt-bg-player', {
                 videoId: '8rvIVBLZg2o',
                 playerVars: {
-                    autoplay: 0,
-                    loop: 1,
-                    playlist: '8rvIVBLZg2o',
-                    controls: 0,
-                    showinfo: 0,
-                    modestbranding: 1,
-                    playsinline: 1,
-                    rel: 0,
-                    origin: window.location.origin
+                    autoplay: 0, loop: 1, playlist: '8rvIVBLZg2o',
+                    controls: 0, showinfo: 0, modestbranding: 1,
+                    playsinline: 1, rel: 0, origin: window.location.origin
                 },
                 events: {
                     'onReady': function (event) {
@@ -529,37 +524,22 @@
         function startBackgroundAudio() {
             if (audioStarted) return;
             audioStarted = true;
-
             ['click', 'touchend', 'keydown'].forEach(function (evt) {
                 document.removeEventListener(evt, startBackgroundAudio);
             });
 
-            // Prime the MP3 NOW during the user gesture (at volume 0)
-            fallbackAudio = new Audio(FALLBACK_MP3);
-            fallbackAudio.volume = 0;
-            fallbackAudio.loop = true;
-            fallbackAudio.play().catch(function () { });
-
-            // Also try YouTube
-            if (playerReady && bgPlayer && bgPlayer.playVideo) {
-                try { bgPlayer.playVideo(); } catch (e) { }
-            }
-
-            // After 4s, decide which source to keep
-            setTimeout(function () {
-                var ytPlaying = false;
-                try {
-                    ytPlaying = bgPlayer && bgPlayer.getPlayerState && bgPlayer.getPlayerState() === 1;
-                } catch (e) { }
-
-                if (ytPlaying) {
-                    // YouTube won — kill the silent MP3
-                    if (fallbackAudio) { fallbackAudio.pause(); fallbackAudio = null; }
-                } else {
-                    // YouTube failed — unmute the MP3
-                    if (fallbackAudio) { fallbackAudio.volume = 0.3; }
+            if (isMobile) {
+                // Mobile: play MP3 directly
+                var audio = new Audio(MOBILE_MP3);
+                audio.volume = 0.3;
+                audio.loop = true;
+                audio.play().catch(function () { });
+            } else {
+                // Desktop: play YouTube
+                if (playerReady && bgPlayer && bgPlayer.playVideo) {
+                    try { bgPlayer.playVideo(); } catch (e) { }
                 }
-            }, 4000);
+            }
         }
 
         // Initialize
@@ -573,10 +553,8 @@
 
     </script>
 
-    <!-- YouTube IFrame API -->
+    <!-- YouTube IFrame API (desktop only, mobile skips it) -->
     <script src="https://www.youtube.com/iframe_api"></script>
-
-    <!-- YouTube Player: 1x1px in viewport corner -->
     <div id="yt-bg-player"
         style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;"></div>
 
