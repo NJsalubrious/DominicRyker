@@ -495,6 +495,7 @@
 
         // --- 3. BACKGROUND AUDIO ---
         // YouTube first (for view counts), Cloudflare MP3 failsafe (for blocked browsers)
+        // Strategy: Start BOTH on user gesture (MP3 silent), then after 4s keep whichever works.
 
         const FALLBACK_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/DominicStructuralPsychopathy101.mp3';
         let bgPlayer = null;
@@ -525,42 +526,40 @@
             });
         }
 
-        function playFallbackMP3() {
-            if (fallbackAudio) return;
-            fallbackAudio = new Audio(FALLBACK_MP3);
-            fallbackAudio.volume = 0.3;
-            fallbackAudio.loop = true;
-            fallbackAudio.play().catch(function () { });
-        }
-
         function startBackgroundAudio() {
             if (audioStarted) return;
             audioStarted = true;
 
-            // Remove listeners immediately
             ['click', 'touchend', 'keydown'].forEach(function (evt) {
                 document.removeEventListener(evt, startBackgroundAudio);
             });
 
-            // Try YouTube first
+            // Prime the MP3 NOW during the user gesture (at volume 0)
+            fallbackAudio = new Audio(FALLBACK_MP3);
+            fallbackAudio.volume = 0;
+            fallbackAudio.loop = true;
+            fallbackAudio.play().catch(function () { });
+
+            // Also try YouTube
             if (playerReady && bgPlayer && bgPlayer.playVideo) {
-                try {
-                    bgPlayer.playVideo();
-                    // Check after 4s if YouTube actually started playing
-                    setTimeout(function () {
-                        try {
-                            var state = bgPlayer.getPlayerState();
-                            // 1 = playing, anything else = failed
-                            if (state !== 1) { playFallbackMP3(); }
-                        } catch (e) { playFallbackMP3(); }
-                    }, 4000);
-                } catch (e) {
-                    playFallbackMP3();
-                }
-            } else {
-                // YouTube never loaded — go straight to MP3
-                playFallbackMP3();
+                try { bgPlayer.playVideo(); } catch (e) { }
             }
+
+            // After 4s, decide which source to keep
+            setTimeout(function () {
+                var ytPlaying = false;
+                try {
+                    ytPlaying = bgPlayer && bgPlayer.getPlayerState && bgPlayer.getPlayerState() === 1;
+                } catch (e) { }
+
+                if (ytPlaying) {
+                    // YouTube won — kill the silent MP3
+                    if (fallbackAudio) { fallbackAudio.pause(); fallbackAudio = null; }
+                } else {
+                    // YouTube failed — unmute the MP3
+                    if (fallbackAudio) { fallbackAudio.volume = 0.3; }
+                }
+            }, 4000);
         }
 
         // Initialize
