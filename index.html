@@ -502,32 +502,56 @@
             }, 500);
         };
 
-        // --- 3. BACKGROUND AUDIO ---
-        // Desktop = YouTube (for view counts), Mobile = direct MP3 (reliable)
+        // --- 3. BACKGROUND AUDIO (Privacy-Enhanced) ---
+        // Desktop = YouTube (privacy-enhanced, for view counts), Mobile = direct MP3
+        // Fallback: if YouTube fails or is blocked by privacy settings, MP3 kicks in
         const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1);
-        const MOBILE_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/PixelStortionSongs/DominicStructuralPsychopathy101.mp3';
+        const FALLBACK_MP3 = 'https://pub-111e813bd5634cd8a9ecdd3d5c2a0916.r2.dev/PixelStortionSongs/DominicStructuralPsychopathy101.mp3';
         let audioStarted = false;
+        let mp3Fallback = null;
 
-        // --- DESKTOP: YouTube ---
+        // --- DESKTOP: YouTube (privacy-enhanced mode) ---
         let bgPlayer = null;
         let playerReady = false;
+        let ytPlaying = false;
 
         function onYouTubeIframeAPIReady() {
-            if (isMobile) return; // skip YouTube setup on mobile
-            bgPlayer = new YT.Player('yt-bg-player', {
-                videoId: '8rvIVBLZg2o',
-                playerVars: {
-                    autoplay: 0, loop: 1, playlist: '8rvIVBLZg2o',
-                    controls: 0, showinfo: 0, modestbranding: 1,
-                    playsinline: 1, rel: 0
-                },
-                events: {
-                    'onReady': function (event) {
-                        event.target.setVolume(30);
-                        playerReady = true;
+            if (isMobile) return;
+            try {
+                bgPlayer = new YT.Player('yt-bg-player', {
+                    host: 'https://www.youtube-nocookie.com',
+                    videoId: '8rvIVBLZg2o',
+                    playerVars: {
+                        autoplay: 0, loop: 1, playlist: '8rvIVBLZg2o',
+                        controls: 0, showinfo: 0, modestbranding: 1,
+                        playsinline: 1, rel: 0, origin: window.location.origin
+                    },
+                    events: {
+                        'onReady': function (event) {
+                            event.target.setVolume(30);
+                            playerReady = true;
+                        },
+                        'onStateChange': function (event) {
+                            if (event.data === YT.PlayerState.PLAYING) {
+                                ytPlaying = true;
+                            }
+                        },
+                        'onError': function () {
+                            playMP3Fallback();
+                        }
                     }
-                }
-            });
+                });
+            } catch (e) {
+                playerReady = false;
+            }
+        }
+
+        function playMP3Fallback() {
+            if (mp3Fallback) return;
+            mp3Fallback = new Audio(FALLBACK_MP3);
+            mp3Fallback.volume = 0.3;
+            mp3Fallback.loop = true;
+            mp3Fallback.play().catch(function () { });
         }
 
         function startBackgroundAudio() {
@@ -538,15 +562,17 @@
             });
 
             if (isMobile) {
-                // Mobile: play MP3 directly
-                var audio = new Audio(MOBILE_MP3);
-                audio.volume = 0.3;
-                audio.loop = true;
-                audio.play().catch(function () { });
+                playMP3Fallback();
             } else {
-                // Desktop: play YouTube
                 if (playerReady && bgPlayer && bgPlayer.playVideo) {
                     try { bgPlayer.playVideo(); } catch (e) { }
+                    setTimeout(function () {
+                        if (!ytPlaying) {
+                            playMP3Fallback();
+                        }
+                    }, 4000);
+                } else {
+                    playMP3Fallback();
                 }
             }
         }
