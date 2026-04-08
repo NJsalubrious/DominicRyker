@@ -1,7 +1,29 @@
 export default {
     async fetch(request, env) {
+        const url = new URL(request.url);
+        const pathname = url.pathname.toLowerCase();
+
+        // ── BLOCK: Serve noindex headers for backup/alternate HTML files ──
+        const backupPatterns = [
+            'index_dominicrykersite',
+            'index_backup',
+            'index_backup_'
+        ];
+        const isBackupFile = backupPatterns.some(p => pathname.includes(p));
+
         // 1. Fetch the static HTML directly from my Pages assets
         const response = await env.ASSETS.fetch(request);
+
+        // If it's a backup file, add noindex header and return immediately
+        if (isBackupFile) {
+            const headers = new Headers(response.headers);
+            headers.set('X-Robots-Tag', 'noindex, nofollow');
+            return new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers
+            });
+        }
 
         // SAFETY CHECK: Only alter HTML. Never touch my complex CSS, JS, or Three.js/React!
         const contentType = response.headers.get("content-type");
@@ -17,9 +39,7 @@ export default {
             const payload = JSON.parse(kvData);
 
             // 3. The Switchboard: Figure out which site the visitor is on
-            const url = new URL(request.url);
             const hostname = url.hostname.toLowerCase();
-            const pathname = url.pathname.toLowerCase();
 
             let targetNode = null;
 
@@ -45,8 +65,39 @@ export default {
 
             const siteMeta = payload[targetNode];
 
-            // 4. Inject the AI metadata
+            // Track which existing tags to remove so we don't duplicate
+            let removedTitle = false;
+
+            // 4. Inject the AI metadata — REPLACE, don't duplicate
             return new HTMLRewriter()
+                // Remove existing <title> so we don't get stacked titles
+                .on('title', {
+                    element(element) {
+                        if (siteMeta.title && !removedTitle) {
+                            element.remove();
+                            removedTitle = true;
+                        }
+                    }
+                })
+                // Remove existing meta tags that we're about to replace
+                .on('meta', {
+                    element(element) {
+                        const name = (element.getAttribute('name') || '').toLowerCase();
+                        const property = (element.getAttribute('property') || '').toLowerCase();
+
+                        // Remove description-related metas if we have a replacement
+                        if (siteMeta.description) {
+                            if (name === 'description') { element.remove(); return; }
+                            if (property === 'og:description') { element.remove(); return; }
+                        }
+                        // Remove title-related metas if we have a replacement
+                        if (siteMeta.title) {
+                            if (property === 'og:title') { element.remove(); return; }
+                            if (name === 'twitter:title') { element.remove(); return; }
+                        }
+                    }
+                })
+                // Append clean, deduplicated AI metadata
                 .on('head', {
                     element(element) {
                         if (siteMeta.title) {

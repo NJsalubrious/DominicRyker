@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /index_DominicRykersSite.html
+Disallow: /index_BACKUP_20260320.html
+Disallow: /index_backup_20260320_2111.html
+Disallow: /index_BACKUP_20260408_canonical_fix.html
+Disallow: /_worker.js
+Disallow: /_worker_BACKUP_20260408.js
+
+Sitemap: https://dominicryker.com/sitemap.xml
