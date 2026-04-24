@@ -65,8 +65,15 @@ export default {
 
             const siteMeta = payload[targetNode];
 
+            // Helper to prevent HTML injection errors
+            const escapeHtml = (unsafe) => {
+                if (!unsafe) return '';
+                return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            };
+
             // Track which existing tags to remove so we don't duplicate
             let removedTitle = false;
+            let headInjected = false;
 
             // 4. Inject the AI metadata — REPLACE, don't duplicate
             return new HTMLRewriter()
@@ -100,14 +107,20 @@ export default {
                 // Append clean, deduplicated AI metadata
                 .on('head', {
                     element(element) {
+                        if (headInjected) return;
+                        headInjected = true;
+                        
+                        const safeTitle = escapeHtml(siteMeta.title);
+                        const safeDesc = escapeHtml(siteMeta.description);
+
                         if (siteMeta.title) {
-                            element.append(`<title>${siteMeta.title}</title>`, { html: true });
-                            element.append(`<meta property="og:title" content="${siteMeta.title}">`, { html: true });
-                            element.append(`<meta name="twitter:title" content="${siteMeta.title}">`, { html: true });
+                            element.append(`<title>${safeTitle}</title>`, { html: true });
+                            element.append(`<meta property="og:title" content="${safeTitle}">`, { html: true });
+                            element.append(`<meta name="twitter:title" content="${safeTitle}">`, { html: true });
                         }
                         if (siteMeta.description) {
-                            element.append(`<meta name="description" content="${siteMeta.description}">`, { html: true });
-                            element.append(`<meta property="og:description" content="${siteMeta.description}">`, { html: true });
+                            element.append(`<meta name="description" content="${safeDesc}">`, { html: true });
+                            element.append(`<meta property="og:description" content="${safeDesc}">`, { html: true });
                         }
                         if (siteMeta.schema) {
                             element.append(`<script type="application/ld+json">${JSON.stringify(siteMeta.schema)}</script>`, { html: true });
