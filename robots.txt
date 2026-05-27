@@ -41,3 +41,4 @@ Disallow: /index_BACKUP_20260408_canonical_fix.html
 Disallow: /_worker_BACKUP_20260408.js
 
 Sitemap: https://dominicryker.com/sitemap.xml
+Sitemap: https://dominicryker.com/sitemap-images.xml

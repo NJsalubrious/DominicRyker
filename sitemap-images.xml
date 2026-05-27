@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://dominicryker.com/</loc>
+    <image:image>
+      <image:loc>https://dominicryker.com/DOMINIC_RYKER.jpg</image:loc>
+      <image:title>Dominic Ryker — social card</image:title>
+      <image:caption>Fictional character in Silence Is The Trauma. Studio: Pixelstortion.</image:caption>
+    </image:image>
+  </url>
+</urlset>
